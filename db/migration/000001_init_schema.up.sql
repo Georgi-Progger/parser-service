@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS "annoucement"(
     id SERIAL PRIMARY KEY,
+    link VARCHAR(255),
     model VARCHAR(255),
     price VARCHAR(255),
     year VARCHAR(255),
@@ -19,5 +20,7 @@ CREATE TABLE IF NOT EXISTS "annoucement"(
     color VARCHAR(255),
     steering VARCHAR(255),
     vin VARCHAR(255),
-    exchange VARCHAR(255)
+    exchange VARCHAR(255),
+    location VARCHAR(255),
+    description TEXT
 );

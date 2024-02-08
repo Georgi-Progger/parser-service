@@ -4,22 +4,28 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"golang.org/x/net/html"
 
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	. "main.go/internal/model/annoucement"
 )
 
-const (
-	dbHost     = "localhost"
-	dbPort     = "5432"
-	dbUser     = "geor"
-	dbPassword = "georkryt"
-	dbName     = "parser_db"
-)
-
 func createDBConnection() (*sql.DB, error) {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+
 	dbInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbPassword, dbName)
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
@@ -34,26 +40,26 @@ func InsertIntoDB(annoucementInfo Annoucement) error {
 		return err
 	}
 	defer db.Close()
-
 	stmt, err := db.Prepare(`
-			INSERT INTO annoucement (
-				Model, Price, Year, Generation, Mileage, History, PTS, Owners,
-				Condition, Modification, Engine_Volume, Engine_Type, Transmission,
-				Drive, Equipment, Body_Type, Color, Steering, VIN, Exchange
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-		`)
+	INSERT INTO annoucement (
+		Link, Model, Price, Year, Generation, Mileage, History, PTS, Owners,
+		Condition, Modification, Engine_Volume, Engine_Type, Transmission,
+		Drive, Equipment, Body_Type, Color, Steering, VIN, Exchange, Location, Description
+	) 
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer stmt.Close()
 
 	_, err = stmt.Exec(
-		annoucementInfo.Model, annoucementInfo.Price, annoucementInfo.Year, annoucementInfo.Generation,
+		annoucementInfo.Link, annoucementInfo.Model, annoucementInfo.Price, annoucementInfo.Year, annoucementInfo.Generation,
 		annoucementInfo.Mileage, annoucementInfo.History, annoucementInfo.PTS, annoucementInfo.Owners,
 		annoucementInfo.Condition, annoucementInfo.Modification, annoucementInfo.EngineVolume,
 		annoucementInfo.EngineType, annoucementInfo.Transmission, annoucementInfo.Drive,
 		annoucementInfo.Equipment, annoucementInfo.BodyType, annoucementInfo.Color,
-		annoucementInfo.Steering, annoucementInfo.VIN, annoucementInfo.Exchange,
+		annoucementInfo.Steering, annoucementInfo.VIN, annoucementInfo.Exchange, annoucementInfo.Location, annoucementInfo.Description,
 	)
 
 	if err != nil {
@@ -89,13 +95,17 @@ func ExtractLinks(htmlContent string, targetClass string) ([]string, error) {
 			}
 		}
 	}
-
 }
-func ExtractCarInfo(htmlContent string, targetClass string) (*Annoucement, error) {
+
+func ExtractCarInfo(link, htmlContent, targetClass string) (*Annoucement, error) {
 	reader := strings.NewReader(htmlContent)
 	tokenizer := html.NewTokenizer(reader)
 
 	carInfo := &Annoucement{}
+	carInfo.Link = link
+	var foundTitleInfo bool
+
+	carInfo.Description = setDescrtiption(htmlContent)
 	for {
 		tokenType := tokenizer.Next()
 		switch tokenType {
@@ -103,18 +113,16 @@ func ExtractCarInfo(htmlContent string, targetClass string) (*Annoucement, error
 			return carInfo, nil
 		case html.StartTagToken, html.SelfClosingTagToken:
 			token := tokenizer.Token()
-			if token.Data == "h1" {
-				var foundTargetClass bool
-
+			switch token.Data {
+			case "h1":
 				for _, attr := range token.Attr {
 					if attr.Key == "data-marker" && strings.Contains(attr.Val, "item-view/title-info") {
-						foundTargetClass = true
+						foundTitleInfo = true
 						break
 					}
 				}
-				if foundTargetClass {
+				if foundTitleInfo {
 					inputString := ""
-
 					for {
 						tokenType := tokenizer.Next()
 						token := tokenizer.Token()
@@ -128,31 +136,39 @@ func ExtractCarInfo(htmlContent string, targetClass string) (*Annoucement, error
 					carInfo.Model = finalString[0]
 					inputString = ""
 				}
-			} else if token.Data == "span" {
-				var foundTargetClass bool
-
+			case "span":
 				for _, attr := range token.Attr {
 					if attr.Key == "data-marker" && strings.Contains(attr.Val, "item-view/item-price") {
-						foundTargetClass = true
+						inputString := ""
+						for {
+							tokenType := tokenizer.Next()
+							token := tokenizer.Token()
+							if tokenType == html.TextToken {
+								inputString += token.Data
+							} else if tokenType == html.EndTagToken {
+								break
+							}
+						}
+						carInfo.Price = inputString
+						break
+					}
+					if attr.Key == "class" && strings.Contains(attr.Val, "style-item-address__string-wt61A") {
+						inputString := ""
+						for {
+							tokenType := tokenizer.Next()
+							token := tokenizer.Token()
+							if tokenType == html.TextToken {
+								inputString += token.Data
+							} else if tokenType == html.EndTagToken {
+								break
+							}
+						}
+						carInfo.Location = inputString
 						break
 					}
 				}
-				if foundTargetClass {
-					inputString := ""
 
-					for {
-						tokenType := tokenizer.Next()
-						token := tokenizer.Token()
-						if tokenType == html.TextToken {
-							inputString += token.Data
-						} else if tokenType == html.EndTagToken {
-							break
-						}
-					}
-					carInfo.Price = inputString
-					inputString = ""
-				}
-			} else if token.Data == "li" {
+			case "li":
 				var foundTargetClass bool
 				for _, attr := range token.Attr {
 					if attr.Key == "class" && strings.Contains(attr.Val, targetClass) {
@@ -160,7 +176,6 @@ func ExtractCarInfo(htmlContent string, targetClass string) (*Annoucement, error
 						break
 					}
 				}
-
 				if foundTargetClass {
 					inputString := ""
 					for {
@@ -170,14 +185,10 @@ func ExtractCarInfo(htmlContent string, targetClass string) (*Annoucement, error
 							inputString += token.Data
 						} else if tokenType == html.EndTagToken && token.Data == "li" {
 							finalString := strings.Split(inputString, ": ")
-							// fieldsInfo := make(map[string]string)
-							// fieldsInfo[finalString[0]] = finalString[1]
-
 							setCarInfoField(carInfo, finalString)
 							break
 						}
 					}
-					inputString = ""
 				}
 			}
 		}
@@ -223,4 +234,40 @@ func setCarInfoField(info *Annoucement, infoString []string) {
 	case "Обмен":
 		info.Exchange = infoString[1]
 	}
+}
+
+func setDescrtiption(htmlContent string) string {
+	reader := strings.NewReader(htmlContent)
+	tokenizer := html.NewTokenizer(reader)
+
+	inputString := ""
+	inDescription := false
+	for {
+		tokenType := tokenizer.Next()
+		switch tokenType {
+		case html.ErrorToken:
+			return ""
+		case html.StartTagToken, html.SelfClosingTagToken:
+			token := tokenizer.Token()
+			if token.Data == "div" {
+				for _, attr := range token.Attr {
+					if attr.Key == "data-marker" && attr.Val == "item-view/item-description" {
+						inDescription = true
+						break
+					}
+				}
+			} else if (token.Data == "li" || token.Data == "p") && inDescription {
+				tokenizer.Next()
+				textToken := tokenizer.Token()
+				inputString += textToken.Data + " "
+				inputString = strings.ReplaceAll(inputString, "strong", "")
+			}
+		case html.EndTagToken:
+			token := tokenizer.Token()
+			if token.Data == "div" && inDescription {
+				return inputString
+			}
+		}
+	}
+
 }

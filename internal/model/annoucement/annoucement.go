@@ -2,6 +2,7 @@ package annoucement
 
 type Annoucement struct {
 	Id           uint64
+	Link         string `json:"link"`
 	Model        string `json:"model"`
 	Price        string `json:"price"`
 	Year         string `json:"year"`
@@ -22,4 +23,6 @@ type Annoucement struct {
 	Steering     string `json:"steering"`
 	VIN          string `json:"vin"`
 	Exchange     string `json:"exchange"`
+	Location     string `json:"location"`
+	Description  string `json:"description"`
 }

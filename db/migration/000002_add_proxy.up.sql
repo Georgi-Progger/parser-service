@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS "proxy"(
+    id SERIAL PRIMARY KEY,
+    body VARCHAR(255),
+    active BOOLEAN NOT NULL 
+)
