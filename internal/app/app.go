@@ -8,7 +8,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
 	_ "github.com/lib/pq"
 	"main.go/internal/service/annoucement"
 	"main.go/internal/service/proxy"
@@ -47,7 +46,7 @@ func NewApplication(cfg *Config) (*App, error) {
 		AnnoucementService: annoucementService,
 		ProxyService:       proxyService,
 		config:             cfg,
-		Echo:               NewRouter(annoucementService, proxyService),
+		Echo:               newRoute(annoucementService, proxyService),
 	}, nil
 }
 
@@ -75,14 +74,4 @@ func ConnectDatabase() (*sql.DB, error) {
 		log.Panic(err)
 	}
 	return db, nil
-}
-
-func NewRouter(a *annoucement.Service, p *proxy.Service) *echo.Echo {
-	router := echo.New()
-
-	router.Use(middleware.Logger())
-
-	router.GET("/all/annoucements/:page", a.GetAnnoucements)
-
-	return router
 }

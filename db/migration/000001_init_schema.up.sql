@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS "annoucement"(
+CREATE TABLE IF NOT EXISTS "annoucements"(
     id SERIAL PRIMARY KEY,
     link VARCHAR(255),
     model VARCHAR(255),

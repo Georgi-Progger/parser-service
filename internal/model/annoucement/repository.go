@@ -16,10 +16,10 @@ func NewRepository(db *sql.DB) *repo {
 	}
 }
 
-func (r *repo) GetAnnoucement(ctx context.Context, page int) (*[]Annoucement, error) {
+func (r *repo) GetAnnoucements(ctx context.Context, page int) (*[]Annoucement, error) {
 	offset := (page - 1) * 10
 	query := `
-			SELECT * FROM Annoucement
+			SELECT * FROM annoucements
 			ORDER BY id
 			LIMIT 10
 			OFFSET $1;
@@ -72,9 +72,9 @@ func (r *repo) GetAnnoucement(ctx context.Context, page int) (*[]Annoucement, er
 
 func (r *repo) SetAnnoucement(ctx context.Context, annoucementInfo Annoucement) error {
 	query := `
-			INSERT INTO annoucement (
-				Link, Model, Price, Year, Generation, Mileage, History, PTS, Owners,
-				Condition, Modification, Engine_Volume, Engine_Type, Transmission,
+			INSERT INTO annoucements (
+				Link, Model, Price, Year, Generation, Mileage, History, PTS, 
+				Owners, Condition, Modification, Engine_Volume, Engine_Type, Transmission,
 				Drive, Equipment, Body_Type, Color, Steering, VIN, Exchange, Location, Description
 			) 
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
@@ -91,4 +91,16 @@ func (r *repo) SetAnnoucement(ctx context.Context, annoucementInfo Annoucement) 
 	}
 
 	return nil
+}
+
+func (r *repo) LinkExists(ctx context.Context, link string) bool {
+	query := `
+			SELECT COUNT(*) FROM annoucements WHERE Link = $1
+	`
+	var count int
+	err := r.db.QueryRowContext(ctx, query, link).Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return count > 0
 }
