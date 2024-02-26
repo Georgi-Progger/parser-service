@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	userAgent string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0"
+	userAgent string = "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 	link string = "https://www.avito.ru/all/avtomobili?cd=1&s=104"
 )
@@ -24,11 +24,11 @@ func getChromeDriver(port int) (*selenium.Service, error) {
 	return service, nil
 }
 
-func Run(proxy string) []annoucement.Annoucement {
-	annoucements := runWebDriver(link, proxy, userAgent)
-	return annoucements
+func Run(proxy string) ([]annoucement.Annoucement, int, bool) {
+	annoucements, lastIndex, isEnd := runWebDriver(link, proxy, userAgent)
+	return annoucements, lastIndex, isEnd
 }
-func runWebDriver(link string, proxy string, userAgent string) []annoucement.Annoucement {
+func runWebDriver(link string, proxy string, userAgent string) ([]annoucement.Annoucement, int, bool) {
 	fmt.Printf("Driver Parsing %s\n", link)
 
 	chromeDriverService, err := getChromeDriver(9515)
@@ -70,10 +70,13 @@ func runWebDriver(link string, proxy string, userAgent string) []annoucement.Ann
 	for idx := range carLinks {
 		fmt.Println("Parsing link:", carLinks[idx])
 		annoucementData := getAnnoucementData(wd, carLinks[idx])
+		if annoucementData.Model == "" {
+			return annoucements, idx, len(annoucements) == len(carLinks)
+		}
 		annoucements = append(annoucements, *annoucementData)
 	}
 
-	return annoucements
+	return annoucements, 0, (len(annoucements) == len(carLinks)) && (len(carLinks) > 0)
 }
 
 func getLinksAnnoucements(wd selenium.WebDriver, link string) []string {

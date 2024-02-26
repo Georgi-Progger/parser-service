@@ -36,11 +36,16 @@ func (s *Service) SetAnnoucements(c echo.Context) error {
 		return c.String(http.StatusNonAuthoritativeInfo, err.Error())
 	}
 
-	annoucementInfo := parser.Run(activeProxy.Body)
-	for idx := range annoucementInfo {
-		isExists := annoucementRepo.LinkExists(ctx, annoucementInfo[idx].Link)
+	annoucementInfo, lastIndex, isEnd := parser.Run(activeProxy.Body)
+	for !isEnd {
+		proxyRepo.UpdateProxy(ctx, activeProxy.Body)
+		activeProxy, err = proxyRepo.GetActiveProxy(ctx)
+		annoucementInfo, lastIndex, isEnd = parser.Run(activeProxy.Body)
+	}
+	for i := lastIndex; i < len(annoucementInfo); i++ {
+		isExists := annoucementRepo.LinkExists(ctx, annoucementInfo[i].Link)
 		if !isExists {
-			annoucementRepo.SetAnnoucement(ctx, annoucementInfo[idx])
+			annoucementRepo.SetAnnoucement(ctx, annoucementInfo[i])
 		}
 	}
 	return c.JSON(http.StatusOK, "All annoucements is save")

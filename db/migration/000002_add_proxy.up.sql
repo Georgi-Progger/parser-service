@@ -9,3 +9,4 @@ INSERT INTO proxies (body, isactive) VALUES ('198.41.206.65:80',true);
 INSERT INTO proxies (body, isactive) VALUES ('104.18.247.214:80',true);
 INSERT INTO proxies (body, isactive) VALUES ('185.238.228.201:80',true);
 INSERT INTO proxies (body, isactive) VALUES ('172.67.54.200:80',true);
+INSERT INTO proxies (body, isactive) VALUES ('194.67.91.153:80',true);

@@ -38,7 +38,7 @@ func (r *repo) GetActiveProxy(ctx context.Context) (*Proxy, error) {
 func (r *repo) UpdateProxy(ctx context.Context, body string) error {
 	query := `
 			UPDATE proxies 
-			SET isactive = true
+			SET isactive = false
 			WHERE body = $1;
 		`
 
