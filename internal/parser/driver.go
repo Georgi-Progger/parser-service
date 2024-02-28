@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/tebeka/selenium"
 	"github.com/tebeka/selenium/chrome"
@@ -10,7 +11,7 @@ import (
 )
 
 var (
-	userAgent string = "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+	userAgent string = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
 
 	link string = "https://www.avito.ru/all/avtomobili?cd=1&s=104"
 )
@@ -24,12 +25,12 @@ func getChromeDriver(port int) (*selenium.Service, error) {
 	return service, nil
 }
 
-func Run(proxy string) ([]annoucement.Annoucement, int, bool) {
-	annoucements, lastIndex, isEnd := runWebDriver(link, proxy, userAgent)
+func Run(proxy string, lastIndex int) ([]annoucement.Annoucement, int, bool) {
+	annoucements, lastIndex, isEnd := runWebDriver(link, proxy, userAgent, lastIndex)
 	return annoucements, lastIndex, isEnd
 }
-func runWebDriver(link string, proxy string, userAgent string) ([]annoucement.Annoucement, int, bool) {
-	fmt.Printf("Driver Parsing %s\n", link)
+func runWebDriver(link, proxy, userAgent string, lastIndex int) ([]annoucement.Annoucement, int, bool) {
+	fmt.Printf("Driver Parsing %s\n, with proxy:%s", link, proxy)
 
 	chromeDriverService, err := getChromeDriver(9515)
 	if err != nil {
@@ -67,13 +68,19 @@ func runWebDriver(link string, proxy string, userAgent string) ([]annoucement.An
 
 	carLinks := getLinksAnnoucements(wd, link)
 	var annoucements []annoucement.Annoucement
-	for idx := range carLinks {
-		fmt.Println("Parsing link:", carLinks[idx])
-		annoucementData := getAnnoucementData(wd, carLinks[idx])
+	for i := lastIndex; i < len(carLinks); i++ {
+
+		start := time.Now()
+		fmt.Println("Parsing link:", carLinks[i])
+		annoucementData := getAnnoucementData(wd, carLinks[i])
 		if annoucementData.Model == "" {
-			return annoucements, idx, len(annoucements) == len(carLinks)
+			return annoucements, i, len(annoucements) == len(carLinks)
 		}
 		annoucements = append(annoucements, *annoucementData)
+
+		end := time.Now()
+
+		fmt.Printf("runWebDriver took %v to execute\n", end.Sub(start))
 	}
 
 	return annoucements, 0, (len(annoucements) == len(carLinks)) && (len(carLinks) > 0)

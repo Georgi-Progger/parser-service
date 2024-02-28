@@ -1,22 +1,24 @@
-package annoucement
+package repositories
 
 import (
 	"context"
 	"database/sql"
 	"log"
+
+	annoucement "main.go/internal/model/annoucement"
 )
 
-type repo struct {
+type annoucementRepository struct {
 	db *sql.DB
 }
 
-func NewRepository(db *sql.DB) *repo {
-	return &repo{
+func NewAnnoucementRepository(db *sql.DB) *annoucementRepository {
+	return &annoucementRepository{
 		db: db,
 	}
 }
 
-func (r *repo) GetAnnoucements(ctx context.Context, page int) (*[]Annoucement, error) {
+func (r *annoucementRepository) GetAnnoucements(ctx context.Context, page int) (*[]annoucement.Annoucement, error) {
 	offset := (page - 1) * 10
 	query := `
 			SELECT * FROM annoucements
@@ -29,10 +31,10 @@ func (r *repo) GetAnnoucements(ctx context.Context, page int) (*[]Annoucement, e
 		log.Fatal("Not correct query", query)
 	}
 	defer rows.Close()
-	annoucements := []Annoucement{}
+	annoucements := []annoucement.Annoucement{}
 
 	for rows.Next() {
-		annoucement := Annoucement{}
+		annoucement := annoucement.Annoucement{}
 		err := rows.Scan(
 			&annoucement.Id,
 			&annoucement.Link,
@@ -70,7 +72,7 @@ func (r *repo) GetAnnoucements(ctx context.Context, page int) (*[]Annoucement, e
 	return &annoucements, nil
 }
 
-func (r *repo) SetAnnoucement(ctx context.Context, annoucementInfo Annoucement) error {
+func (r *annoucementRepository) SetAnnoucement(ctx context.Context, annoucementInfo annoucement.Annoucement) error {
 	query := `
 			INSERT INTO annoucements (
 				Link, Model, Price, Year, Generation, Mileage, History, PTS, 
@@ -93,7 +95,7 @@ func (r *repo) SetAnnoucement(ctx context.Context, annoucementInfo Annoucement) 
 	return nil
 }
 
-func (r *repo) LinkExists(ctx context.Context, link string) bool {
+func (r *annoucementRepository) LinkExists(ctx context.Context, link string) bool {
 	query := `
 			SELECT COUNT(*) FROM annoucements WHERE Link = $1
 	`

@@ -1,22 +1,23 @@
-package proxy
+package repositories
 
 import (
 	"context"
 	"database/sql"
 	"log"
+
+	"main.go/internal/model/proxy"
 )
 
-type repo struct {
+type proxyRepository struct {
 	db *sql.DB
 }
 
-func NewRepository(db *sql.DB) *repo {
-	return &repo{
+func NewProxyRepository(db *sql.DB) *proxyRepository {
+	return &proxyRepository{
 		db: db,
 	}
 }
-
-func (r *repo) GetActiveProxy(ctx context.Context) (*Proxy, error) {
+func (r *proxyRepository) GetActiveProxy(ctx context.Context) (*proxy.Proxy, error) {
 	query := `
 			SELECT * FROM proxies
 			WHERE isactive = true
@@ -24,7 +25,7 @@ func (r *repo) GetActiveProxy(ctx context.Context) (*Proxy, error) {
 			LIMIT 1;
 		`
 
-	proxy := &Proxy{}
+	proxy := &proxy.Proxy{}
 
 	row := r.db.QueryRowContext(ctx, query)
 	err := row.Scan(&proxy.Id, &proxy.Body, &proxy.Active)
@@ -35,7 +36,7 @@ func (r *repo) GetActiveProxy(ctx context.Context) (*Proxy, error) {
 	return proxy, err
 }
 
-func (r *repo) UpdateProxy(ctx context.Context, body string) error {
+func (r *proxyRepository) UpdateProxy(ctx context.Context, body string) error {
 	query := `
 			UPDATE proxies 
 			SET isactive = false
