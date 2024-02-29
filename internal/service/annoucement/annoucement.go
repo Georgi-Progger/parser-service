@@ -1,10 +1,8 @@
 package annoucement
 
 import (
-	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/labstack/echo"
 	"main.go/internal/parser"
@@ -29,30 +27,15 @@ func (s *Service) GetAnnoucements(c echo.Context) error {
 func (s *Service) SetAnnoucements(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	annoucementRepo := repositories.NewRepository(s.db)
 	proxyRepo := repositories.NewRepository(s.db)
 
 	activeProxy, err := proxyRepo.GetActiveProxy(ctx)
 	if err != nil {
 		return c.String(http.StatusNonAuthoritativeInfo, err.Error())
 	}
-	lastIndex := 0
-	annoucementInfo, lastIndex, isEnd := parser.Run(activeProxy.Body, lastIndex)
-	for !isEnd {
-
-		time.Sleep(2 * time.Second)
-		proxyRepo.UpdateProxy(ctx, activeProxy.Body)
-		activeProxy, err = proxyRepo.GetActiveProxy(ctx)
-		if err != nil {
-			log.Panic(err)
-		}
-		annoucementInfo, lastIndex, isEnd = parser.Run(activeProxy.Body, lastIndex)
-	}
-	for i := lastIndex; i < len(annoucementInfo); i++ {
-		isExists := annoucementRepo.LinkExists(ctx, annoucementInfo[i].Link)
-		if !isExists {
-			annoucementRepo.SetAnnoucement(ctx, annoucementInfo[i])
-		}
+	isBlockProxy := parser.Run(activeProxy.Body, s.db, c)
+	if isBlockProxy {
+		proxyRepo.BlockProxy(ctx, activeProxy.Body)
 	}
 	return c.JSON(http.StatusOK, "All annoucements is save")
 }

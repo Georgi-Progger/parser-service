@@ -36,7 +36,7 @@ func (r *proxyRepository) GetActiveProxy(ctx context.Context) (*proxy.Proxy, err
 	return proxy, err
 }
 
-func (r *proxyRepository) UpdateProxy(ctx context.Context, body string) error {
+func (r *proxyRepository) BlockProxy(ctx context.Context, body string) error {
 	query := `
 			UPDATE proxies 
 			SET isactive = false

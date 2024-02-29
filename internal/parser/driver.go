@@ -1,13 +1,16 @@
 package parser
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"time"
 
+	"github.com/labstack/echo"
 	"github.com/tebeka/selenium"
 	"github.com/tebeka/selenium/chrome"
 	"main.go/internal/model/annoucement"
+	"main.go/internal/repositories"
 )
 
 var (
@@ -25,19 +28,12 @@ func getChromeDriver(port int) (*selenium.Service, error) {
 	return service, nil
 }
 
-func Run(proxy string, lastIndex int) ([]annoucement.Annoucement, int, bool) {
-	annoucements, lastIndex, isEnd := runWebDriver(link, proxy, userAgent, lastIndex)
-	return annoucements, lastIndex, isEnd
+func Run(proxy string, db *sql.DB, c echo.Context) bool {
+	isBlockProxy := runWebDriver(proxy, db, c)
+	return isBlockProxy
 }
-func runWebDriver(link, proxy, userAgent string, lastIndex int) ([]annoucement.Annoucement, int, bool) {
-	fmt.Printf("Driver Parsing %s\n, with proxy:%s", link, proxy)
 
-	chromeDriverService, err := getChromeDriver(9515)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer chromeDriverService.Stop()
-
+func getCaps(proxy string) selenium.Capabilities {
 	caps := selenium.Capabilities{
 		"proxy": map[string]interface{}{
 			"httpProxy": proxy,
@@ -59,31 +55,41 @@ func runWebDriver(link, proxy, userAgent string, lastIndex int) ([]annoucement.A
 		// MinidumpPath:    "",
 		// W3C:             false,
 	})
-
+	return caps
+}
+func runWebDriver(proxy string, db *sql.DB, c echo.Context) bool {
+	ctx := c.Request().Context()
+	caps := getCaps(proxy)
+	chromeDriverService, err := getChromeDriver(9515)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer chromeDriverService.Stop()
 	wd, err := selenium.NewRemote(caps, fmt.Sprintf("http://localhost:%d/wd/hub", 9515)) // запуск драйвера на порту определенном
 	if err != nil {
 		log.Panic(err)
 	}
 	defer wd.Quit()
 
+	annoucementRepo := repositories.NewRepository(db)
 	carLinks := getLinksAnnoucements(wd, link)
-	var annoucements []annoucement.Annoucement
-	for i := lastIndex; i < len(carLinks); i++ {
 
+	for idx := range carLinks {
 		start := time.Now()
-		fmt.Println("Parsing link:", carLinks[i])
-		annoucementData := getAnnoucementData(wd, carLinks[i])
-		if annoucementData.Model == "" {
-			return annoucements, i, len(annoucements) == len(carLinks)
+		annoucementData := getAnnoucementData(wd, carLinks[idx])
+		if annoucementRepo.LinkExists(ctx, carLinks[idx]) {
+			break
 		}
-		annoucements = append(annoucements, *annoucementData)
-
+		if annoucementData.Model == "" {
+			return true
+		}
+		fmt.Println("Parsing link:", carLinks[idx])
+		annoucementRepo.SetAnnoucement(c.Request().Context(), *annoucementData)
 		end := time.Now()
 
 		fmt.Printf("runWebDriver took %v to execute\n", end.Sub(start))
 	}
-
-	return annoucements, 0, (len(annoucements) == len(carLinks)) && (len(carLinks) > 0)
+	return false
 }
 
 func getLinksAnnoucements(wd selenium.WebDriver, link string) []string {

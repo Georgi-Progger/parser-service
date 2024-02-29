@@ -16,7 +16,7 @@ type AnnoucementRepository interface {
 
 type ProxyRepository interface {
 	GetActiveProxy(ctx context.Context) (*proxy.Proxy, error)
-	UpdateProxy(ctx context.Context, body string) error
+	BlockProxy(ctx context.Context, body string) error
 }
 
 type repository struct {

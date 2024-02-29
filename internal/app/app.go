@@ -61,7 +61,11 @@ func ConnectDatabase() (*sql.DB, error) {
 	dbPort := os.Getenv("DB_PORT")
 	dbName := os.Getenv("DB_NAME")
 	dbPassword := os.Getenv("DB_PASSWORD")
-
+	// dbEncodePassword := os.Getenv("DB_PASSWORD")
+	// dbPassword, err := url.QueryUnescape(dbEncodePassword)
+	// if err != nil {
+	// 	panic(err)
+	// }
 	cfg.Db.DbConnect = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbPassword, dbName)
 	db, err := sql.Open("postgres", cfg.Db.DbConnect)
 	if err != nil {
